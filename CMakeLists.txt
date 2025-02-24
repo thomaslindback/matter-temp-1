@@ -9,7 +9,7 @@ set(PROJECT_VER_NUMBER 1)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 set(EXTRA_COMPONENT_DIRS
-    "../../../esp-matter-main/examples/common/app_reset"
+    "../../esp/esp-matter/examples/common/app_reset"
     ${extra_components_dirs_append})
 
 project(temp-1)

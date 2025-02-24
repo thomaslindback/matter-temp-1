@@ -71,7 +71,7 @@ and esp-matter-main/examples/common/utils
 Commission as in:
 https://docs.espressif.com/projects/esp-matter/en/latest/esp32/developing.html#commissioning
 
-Matter shell is enabled.
+> Matter shell is enabled. Will output the default. _NOT_ the codes if generte others below
 Check the onboarding code: matter onboardingcodes none
 QRCode:            MT:-24J0-Q000KA0648G00
 QRCodeUrl:         https://project-chip.github.io/connectedhomeip/qrcode.html?data=MT%3A-24J0-Q000KA0648G00
@@ -89,7 +89,7 @@ $Env:ESP_MATTER_PATH="C:\esp\esp-matter-main"
 $Env:MATTER_SDK_PATH="C:\esp\connectedhomeip-master"
 $env:Path = $Env:path + ";$Env:MATTER_SDK_PATH\src\tools"
 
-List env
+> List env
 Get-ChildItem env:
 
 VendorId:        65521 (0xFFF1)
@@ -98,6 +98,8 @@ HardwareVersion: 0 (0x0)
 PinCode:         20202021
 Discriminator:   f00
 
+https://github.com/espressif/esp-matter-tools/tree/main/mfg_tool#usage-examples
+> change passcode and discriminator
 esp-matter-mfg-tool -cn "My bulb" -v 0xFFF2 -p 0x8001 --pai `
     -k $Env:MATTER_SDK_PATH\credentials\test\attestation\Chip-Test-PAI-FFF2-8001-Key.pem `
     -c $Env:MATTER_SDK_PATH\credentials\test\attestation\Chip-Test-PAI-FFF2-8001-Cert.pem `
@@ -105,3 +107,41 @@ esp-matter-mfg-tool -cn "My bulb" -v 0xFFF2 -p 0x8001 --pai `
     --passcode 20202022 --discriminator 3840  --enable-rotating-device-id  `
     --rd-id-uid d2f351f57bb9387445a5f92a601d1c14
 
+WSL:
+
+\\wsl$\Ubuntu\home\thoma
+
+export MATTER_SDK_PATH=$ESP_MATTER_PATH/connectedhomeip/connectedhomeip
+
+> Build chip-cert: https://developers.home.google.com/matter/test/certificates
+>> make sure it is on the path: printenv 
+export PATH=$PATH:$MATTER_SDK_PATH/src/credentials/out
+
+esp-matter-mfg-tool -cn "My bulb" -v 0xFFF2 -p 0x8001 --pai \
+    -k $MATTER_SDK_PATH/credentials/test/attestation/Chip-Test-PAI-FFF2-8001-Key.pem \
+    -c $MATTER_SDK_PATH/credentials/test/attestation/Chip-Test-PAI-FFF2-8001-Cert.pem \
+    -cd $MATTER_SDK_PATH/credentials/test/certification-declaration/Chip-Test-CD-FFF2-8001.der \
+    --passcode 20202021 --discriminator 3840  --enable-rotating-device-id --rd-id-uid d2f351f57bb9387445a5f92a601d1c14
+
+Flash from windows PS shell:
+$Env:THE_BUILD="\\wsl$\Ubuntu\home\thoma\proj\matter-temp-1"
+
+python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x0 $Env:THE_BUILD\build\bootloader\bootloader.bin 0xc000 $Env:THE_BUILD\build\partition_table\partition-table.bin 0x1d000 $Env:THE_BUILD\build\ota_data_initial.bin 0x20000 $Env:THE_BUILD\build\temp-1.bin
+
+
+> In WSL merge bin
+python -m esptool --chip ESP32-S3 merge_bin -o build/merged-flash.bin --flash_mode dio --flash_size 4MB 0x0 build/bootloader/bootloader.bin 0xc000 build/partition_table/partition-table.bin 0x1d000 build/ota_data_initial.bin 0x20000 build/temp-1.bin
+
+> Wrote 0x190c20 bytes to file build/merged-flash.bin, ready to flash to offset 0x0
+
+
+python -m esptool -p COM6 write_flash 0x10000 $Env:THE_BUILD\out\fff2_8001\f2d69df4-1099-49c0-babc-2cda5ab350ab\f2d69df4-1099-49c0-babc-2cda5ab350ab-partition.bin
+
+$Env:PROJ_DIR="\\wsl$\Ubuntu\home\thoma\proj\matter-temp-1"
+
+python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x0 $Env:PROJ_DIR\build\bootloader\bootloader.bin 0xc000 $Env:PROJ_DIR\build\partition_table\partition-table.bin 0x1d000 $Env:PROJ_DIR\build\ota_data_initial.bin 0x20000 $Env:PROJ_DIR\build\temp-1.bin
+
+Flash only app:
+python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x20000 $Env:PROJ_DIR\build\temp-1.bin
+
+python -m esptool -p COM6 write_flash 0x10000 $Env:PROJ_DIR\out\fff2_8001\f2d69df4-1099-49c0-babc-2cda5ab350ab\f2d69df4-1099-49c0-babc-2cda5ab350ab-partition.bin

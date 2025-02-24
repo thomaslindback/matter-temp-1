@@ -15,15 +15,9 @@
 #include <lib/support/CodeUtils.h>
 
 #include <drivers/shtc3.h>
+#include "ASHT31.h"
 
 static const char * TAG = "shtc3";
-
-#define I2C_MASTER_SCL_IO CONFIG_SHTC3_I2C_SCL_PIN
-#define I2C_MASTER_SDA_IO CONFIG_SHTC3_I2C_SDA_PIN
-#define I2C_MASTER_NUM I2C_NUM_0    /*!< I2C port number for master dev */
-#define I2C_MASTER_FREQ_HZ 100000   /*!< I2C master clock frequency */
-
-#define SHTC3_SENSOR_ADDR 0x70      /*!< I2C address of SHTC3 sensor */
 
 typedef struct {
     shtc3_sensor_config_t *config;
@@ -32,85 +26,10 @@ typedef struct {
 } shtc3_sensor_ctx_t;
 
 static shtc3_sensor_ctx_t s_ctx;
+static sht31::ASHT31 temperature;
 
-static esp_err_t shtc3_init_i2c()
-{
-    i2c_config_t i2c_conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_MASTER_SDA_IO,
-        .scl_io_num = I2C_MASTER_SCL_IO,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master = {
-            .clk_speed = I2C_MASTER_FREQ_HZ,
-        },
-    };
-
-    esp_err_t err = i2c_param_config(I2C_MASTER_NUM, &i2c_conf);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure I2C driver, err:%d", err);
-        return err;
-    }
-
-    return i2c_driver_install(I2C_MASTER_NUM, I2C_MODE_MASTER, 0, 0, 0);
-}
-
-static esp_err_t shtc3_read(uint8_t *data, size_t size)
-{
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (SHTC3_SENSOR_ADDR << 1) | I2C_MASTER_WRITE, true /* enable_ack */);
-    // Read temperature first then humidity, with clock stretching enabled
-    i2c_master_write_byte(cmd, 0x7C, true /* enable_ack */);
-    i2c_master_write_byte(cmd, 0xA2, true /* enable_ack */);
-    i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, pdMS_TO_TICKS(1000));
-    i2c_cmd_link_delete(cmd);
-    cmd = NULL;
-
-    // Wait for measurement to complete
-    vTaskDelay(pdMS_TO_TICKS(15));
-
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (SHTC3_SENSOR_ADDR << 1) | I2C_MASTER_READ, true /* enable_ack */);
-    i2c_master_read(cmd, data, size, I2C_MASTER_LAST_NACK);
-    i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, pdMS_TO_TICKS(1000));
-    i2c_cmd_link_delete(cmd);
-    cmd = NULL;
-
-    return ESP_OK;
-}
-
-// Temperature in degree Celsius
-static float shtc3_get_temp(uint16_t raw_temp)
-{
-    return 175.0f * (static_cast<float>(raw_temp) / 65535.0f) - 45.0f;
-}
-
-// Humidity in percentage
-static float shtc3_get_humidity(uint16_t raw_humidity)
-{
-    return 100.0f * (static_cast<float>(raw_humidity) / 65535.0f);
-}
-
-static esp_err_t shtc3_get_read_temp_and_humidity(float & temp, float & humidity)
-{
-    // foreach temperature and humidity: two bytes data, one byte for checksum
-    uint8_t data[6] = {0};
-
-    esp_err_t err = shtc3_read(data, sizeof(data));
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    uint16_t raw_temp = (data[0] << 8) | data[1];
-    uint16_t raw_humidity = (data[3] << 8) | data[4];
-
-    temp = shtc3_get_temp(raw_temp);
-    humidity = shtc3_get_humidity(raw_humidity);
-
+static esp_err_t shtc3_init_i2c() {
+    temperature.begin();
     return ESP_OK;
 }
 
@@ -121,9 +40,11 @@ static void timer_cb_internal(void *arg)
         return;
     }
 
+
     float temp, humidity;
-    esp_err_t err = shtc3_get_read_temp_and_humidity(temp, humidity);
-    if (err != ESP_OK) {
+    bool ret = temperature.readBoth(&temp, &humidity);
+    //esp_err_t err = shtc3_get_read_temp_and_humidity(temp, humidity);
+    if (!ret) {
         return;
     }
     if (ctx->config->temperature.cb) {

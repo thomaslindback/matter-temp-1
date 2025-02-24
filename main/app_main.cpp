@@ -23,7 +23,7 @@
 // drivers implemented by this example
 #include <drivers/shtc3.h>
 
-static const char *TAG = "app_main";
+static const char *TAG = "MATTER-temp-1";
 
 using namespace esp_matter;
 using namespace esp_matter::attribute;
@@ -192,9 +192,12 @@ extern "C" void app_main()
 
     ESP_LOGI(TAG, "CHIP_DEVICE_CONFIG_ENABLE_THREAD: %d", CHIP_DEVICE_CONFIG_ENABLE_THREAD);
     ESP_LOGI(TAG, "CHIP_DEVICE_CONFIG_ENABLE_WIFI: %d", CHIP_DEVICE_CONFIG_ENABLE_WIFI);
-    ESP_LOGI(TAG, "CONFIG_ENABLE_CHIP_SHELL: %d", CONFIG_ENABLE_CHIP_SHELL);
 
-    #if CONFIG_ENABLE_CHIP_SHELL
+#ifndef CONFIG_ENABLE_CHIP_SHELL
+    ESP_LOGI(TAG, "CHIP_SHELL not enabled");
+#endif
+
+#if CONFIG_ENABLE_CHIP_SHELL
     esp_matter::console::diagnostics_register_commands();
     esp_matter::console::wifi_register_commands();
     esp_matter::console::factoryreset_register_commands();

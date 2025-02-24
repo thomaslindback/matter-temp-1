@@ -1,21 +1,15 @@
-menu "Example Configuration"
+menu "TEMP-1 Configuration"
 
-    config SHTC3_I2C_SDA_PIN
+    config I2C_MASTER_SDA
         int "I2C SDA Pin"
         default 4
         help
             GPIO number for I2C master data
 
-    config SHTC3_I2C_SCL_PIN
+    config I2C_MASTER_SCL
         int "I2C SCL Pin"
         default 5
         help
             GPIO number for I2C master clock
-
-    config PIR_DATA_PIN
-        int "PIR Data Pin"
-        default 7
-        help
-            Default PIR Data Pin
 
 endmenu
