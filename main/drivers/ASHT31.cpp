@@ -67,6 +67,8 @@ bool sht31::ASHT31::begin(uint8_t i2caddr, i2c_port_t master_port_num) {
   temp = std::nanf("-99");
 
   reset();
+  heater(false);
+  vTaskDelay(pdMS_TO_TICKS(10));
   return readStatus() != 0xFFFF;
 }
 
@@ -174,22 +176,26 @@ bool sht31::ASHT31::readTempHum(void) {
 
   vTaskDelay(pdMS_TO_TICKS(20));
 
-  if (readbuffer[2] != crc8(readbuffer, 2) ||
-      readbuffer[5] != crc8(readbuffer + 3, 2))
+  if (readbuffer[2] != crc8(readbuffer, 2) || readbuffer[5] != crc8(readbuffer + 3, 2))   {
     return false;
+  }
 
-  int32_t stemp = (int32_t)(((uint32_t)readbuffer[0] << 8) | readbuffer[1]);
-  // simplified (65536 instead of 65535) integer version of:
-  // temp = (stemp * 175.0f) / 65535.0f - 45.0f;
-  stemp = ((4375 * stemp) >> 14) - 4500;
-  temp = (float)stemp / 100.0f;
-
-  uint32_t shum = ((uint32_t)readbuffer[3] << 8) | readbuffer[4];
-  // simplified (65536 instead of 65535) integer version of:
-  // humidity = (shum * 100.0f) / 65535.0f;
-  shum = (625 * shum) >> 12;
-  humidity = (float)shum / 100.0f;
-
+    uint16_t raw_temp = (readbuffer[0] << 8) | readbuffer[1];
+    temp = 175.0f * (static_cast<float>(raw_temp) / 65535.0f) - 45.0f;
+    temp -= 5.3; // the sensor is off by 5.3 degrees C
+    
+  //int32_t stemp = (int32_t)(((uint32_t)readbuffer[0] << 8) | readbuffer[1]);
+  // // simplified (65536 instead of 65535) integer version of:
+  // // temp = (stemp * 175.0f) / 65535.0f - 45.0f;
+  //stemp = ((4375 * stemp) >> 14) - 4500;
+  //temp = (float)stemp / 100.0f;
+  uint16_t raw_humidity = (readbuffer[3] << 8) | readbuffer[4];
+  humidity = 100.0f * (static_cast<float>(raw_humidity) / 65535.0f);
+  //uint32_t shum = ((uint32_t)readbuffer[3] << 8) | readbuffer[4];
+  // // simplified (65536 instead of 65535) integer version of:
+  // // humidity = (shum * 100.0f) / 65535.0f;
+  //shum = (625 * shum) >> 12;
+  //humidity = (float)shum / 100.0f;
   return true;
 }
 

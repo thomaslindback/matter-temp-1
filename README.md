@@ -144,4 +144,14 @@ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_r
 Flash only app:
 python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x20000 $Env:PROJ_DIR\build\temp-1.bin
 
+Flash factory partition:
 python -m esptool -p COM6 write_flash 0x10000 $Env:PROJ_DIR\out\fff2_8001\f2d69df4-1099-49c0-babc-2cda5ab350ab\f2d69df4-1099-49c0-babc-2cda5ab350ab-partition.bin
+
+Info:
+esptool.py image_info build/temp-1.bin
+
+Merge: stand in build/:
+esptool.py --chip esp32s3 merge_bin -o merged-flash.bin @flash_args
+
+Flash from win
+python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x0 $Env:PROJ_DIR\build\merged-flash.bin
