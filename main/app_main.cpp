@@ -8,7 +8,10 @@
 
 #include <app/server/CommissioningWindowManager.h>
 #include <app/server/Server.h>
-#include <bsp/esp-bsp.h>
+//#include <bsp/esp-bsp.h>
+#include <iot_button.h>
+#include <button_types.h>
+#include <button_gpio.h>
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_matter.h>
@@ -17,7 +20,7 @@
 #include <nvs_flash.h>
 
 #include <app_openthread_config.h>
-#include <app_reset.h>
+//#include <app_reset.h>
 #include <common_macros.h>
 
 // drivers implemented by this example
@@ -29,6 +32,25 @@ using namespace esp_matter;
 using namespace esp_matter::attribute;
 using namespace esp_matter::endpoint;
 using namespace chip::app::Clusters;
+
+static bool perform_factory_reset = false;
+
+static void button_factory_reset_pressed_cb(void *arg, void *data)
+{
+    if (!perform_factory_reset) {
+        ESP_LOGI(TAG, "Factory reset triggered. Release the button to start factory reset.");
+        perform_factory_reset = true;
+    }
+}
+
+static void button_factory_reset_released_cb(void *arg, void *data)
+{
+    if (perform_factory_reset) {
+        ESP_LOGI(TAG, "Starting factory reset");
+        esp_matter::factory_reset();
+        perform_factory_reset = false;
+    }
+}
 
 // Application cluster specification, 7.18.2.11. Temperature
 // represents a temperature on the Celsius scale with a resolution of 0.01°C.
@@ -68,12 +90,28 @@ static void humidity_sensor_notification(uint16_t endpoint_id, float humidity, v
     });
 }
 
-static esp_err_t factory_reset_button_register()
-{
-    button_handle_t push_button;
-    esp_err_t err = bsp_iot_button_create(&push_button, NULL, BSP_BUTTON_NUM);
-    VerifyOrReturnError(err == ESP_OK, err);
-    return app_reset_button_register(push_button);
+static esp_err_t factory_reset_button_register() {
+    button_config_t btn_cfg = {0};
+    button_gpio_config_t gpio_cfg = {
+        .gpio_num = CONFIG_RESET_BUTTON_PIN,
+        .active_level = 0,
+        .enable_power_save = false,
+    };
+    
+    button_handle_t reset_button_handle; // = iot_button_create(&config);
+    esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &gpio_cfg, &reset_button_handle);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    esp_err_t err = ESP_OK;
+    err |= iot_button_register_cb(reset_button_handle, BUTTON_LONG_PRESS_HOLD, NULL, button_factory_reset_pressed_cb, NULL);
+    err |= iot_button_register_cb(reset_button_handle, BUTTON_PRESS_UP, NULL, button_factory_reset_released_cb, NULL);
+    return err;
+    //button_handle_t push_button;
+    //esp_err_t err = bsp_iot_button_create(&push_button, NULL, BSP_BUTTON_NUM);
+    //VerifyOrReturnError(err == ESP_OK, err);
+    //return app_reset_button_register(push_button);
 }
 
 static void open_commissioning_window_if_necessary()

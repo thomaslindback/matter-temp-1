@@ -12,4 +12,9 @@ menu "TEMP-1 Configuration"
         help
             GPIO number for I2C master clock
 
+    config RESET_BUTTON_PIN
+        int "Reset button Pin"
+        default 6
+        help
+            GPO number for Reset button
 endmenu

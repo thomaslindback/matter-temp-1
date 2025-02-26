@@ -117,6 +117,7 @@ export MATTER_SDK_PATH=$ESP_MATTER_PATH/connectedhomeip/connectedhomeip
 >> make sure it is on the path: printenv 
 export PATH=$PATH:$MATTER_SDK_PATH/src/credentials/out
 
+// 1.
 esp-matter-mfg-tool -cn "My bulb" -v 0xFFF2 -p 0x8001 --pai \
     -k $MATTER_SDK_PATH/credentials/test/attestation/Chip-Test-PAI-FFF2-8001-Key.pem \
     -c $MATTER_SDK_PATH/credentials/test/attestation/Chip-Test-PAI-FFF2-8001-Cert.pem \
@@ -134,7 +135,7 @@ python -m esptool --chip ESP32-S3 merge_bin -o build/merged-flash.bin --flash_mo
 
 > Wrote 0x190c20 bytes to file build/merged-flash.bin, ready to flash to offset 0x0
 
-
+> Flash fabrication partition
 python -m esptool -p COM6 write_flash 0x10000 $Env:THE_BUILD\out\fff2_8001\f2d69df4-1099-49c0-babc-2cda5ab350ab\f2d69df4-1099-49c0-babc-2cda5ab350ab-partition.bin
 
 $Env:PROJ_DIR="\\wsl$\Ubuntu\home\thoma\proj\matter-temp-1"
@@ -144,7 +145,7 @@ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_r
 Flash only app:
 python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m 0x20000 $Env:PROJ_DIR\build\temp-1.bin
 
-Flash factory partition:
+Flash factory partition no 1:
 python -m esptool -p COM6 write_flash 0x10000 $Env:PROJ_DIR\out\fff2_8001\f2d69df4-1099-49c0-babc-2cda5ab350ab\f2d69df4-1099-49c0-babc-2cda5ab350ab-partition.bin
 
 Info:
